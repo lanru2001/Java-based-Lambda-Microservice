@@ -1,27 +1,63 @@
+Simple Java-based Lambda Microservice
+Build and Deploy
+Prerequisites
+AWS CLI
+Configure AWS user credentials
+Create S3 bucket
+Docker
+Deploy
+The script deploy.sh can be used to deploy the application to any AWS account.
 
-![image](https://user-images.githubusercontent.com/59709429/125682247-e4730e3f-93f2-4349-810b-cfdd4767afd6.png)
+As a prerequisite it is necessary to install and configure the AWS CLI. Additionally, it needs a S3 bucket in the same AWS region in which the application will be deployed. The name of the S3 bucket needs to be configured in the Variable S3_BUCKET in this script.
 
-Overview:
+The application can be packaged and deployed by running
 
-Simple serverless web application that enables users to request unicorn rides from the Wild Rydes fleet. The application will present users with an HTML based user interface for indicating the location where they would like to be picked up and will interface on the backend with a RESTful web service to submit the request and dispatch a nearby unicorn. The application will also provide facilities for users to register with the service and log in before requesting rides.
+bash deploy.sh
+Setup a new project
+The following steps assume that Maven is run in a Docker container. If Maven is already installed on the machine it can be used directly without using Docker.
 
-
-Application Architecture:
-The application architecture uses AWS Lambda, Amazon API Gateway, Amazon DynamoDB, Amazon Cognito, and AWS Amplify Console. Amplify Console provides continuous deployment and hosting of the static web resources including HTML, CSS, JavaScript, and image files which are loaded in the user's browser. JavaScript executed in the browser sends and receives data from a public backend API built using Lambda and API Gateway. Amazon Cognito provides user management and authentication functions to secure the backend API. Finally, DynamoDB provides a persistence layer where data can be stored by the API's Lambda function.
-
-Components:
-- Cognito handles user sign-up, sign-in, & access control.
-
-- CloudFront caches static S3 web content at the edge.
-
-- API Gateway processes API calls. Using API Gateway’s “Lambda Authorizers”, it connects a Lambda function that processes the Authorization header and returns an IAM policy.
-
-- API Gateway then uses that policy to determine if it is valid for the resource and either routes the request or rejects it. API Gateway caches the IAM policy for a period of time, so you could also classify this as the “Valet Key” pattern. API Gateway distributes logs to CloudWatch.
-
-- Lambda handles everything required to run and scale the execution to meet actual demand with high availability. Lambda supports several programming languages and it can be called directly from any web or mobile applications.
-
-- Lambda is integrated with API Gateway. Synchronous calls from API gateway to AWS Lambda enables the application to operate as serverless. AWS Lambda stores dynamic data in a NoSQL database DynamoDB and static data in S3 Bucket.
-
-- MQ Broker — responsible for asynchronous communication between microservices.
-
-- RDS stores user profiles & other business objects.
+Create Docker volume for Maven repository
+docker volume create maven-repository
+Run Maven in Container
+docker run --rm -it -v $PWD:/usr/src/app -v maven-repository:/root/.m2/repository -w /usr/src/app maven:3.6-jdk-8 /bin/bash
+Create project with Maven
+docker run --rm -v $PWD:/usr/src/app -v maven-repository:/root/.m2/repository -w /usr/src/app maven:3.6-jdk-8 mvn archetype:generate -DgroupId=com.carpinuslabs.todo -DartifactId=todo-app -DarchetypeArtifactId=maven-archetype-quickstart -DarchetypeVersion=1.4 -DinteractiveMode=false
+Add dependencies
+<dependency>
+  <groupId>com.amazonaws</groupId>
+  <artifactId>aws-lambda-java-core</artifactId>
+  <version>1.2.0</version>
+</dependency>
+<dependency>
+  <groupId>com.amazonaws</groupId>
+  <artifactId>aws-lambda-java-events</artifactId>
+  <version>2.2.5</version>
+</dependency>
+Configure packaging
+<packaging>jar</packaging>
+Configure compiler settings
+<maven.compiler.source>1.8</maven.compiler.source>
+<maven.compiler.target>1.8</maven.compiler.target>
+Add shade plugin
+<build>
+  <plugins>
+    <plugin>
+      <groupId>org.apache.maven.plugins</groupId>
+      <artifactId>maven-shade-plugin</artifactId>
+      <version>2.3</version>
+      <configuration>
+        <createDependencyReducedPom>false</createDependencyReducedPom>
+      </configuration>
+      <executions>
+        <execution>
+          <phase>package</phase>
+          <goals>
+            <goal>shade</goal>
+          </goals>
+        </execution>
+      </executions>
+    </plugin>
+  </plugins>
+</build>
+Build project in Container
+docker run --rm -v $PWD:/usr/src/app -v maven-repository:/root/.m2/repository -w /usr/src/app maven:3.6-jdk-8 mvn clean package -DskipTests
