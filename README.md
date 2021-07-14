@@ -1,4 +1,12 @@
 
+![image](https://user-images.githubusercontent.com/59709429/125680940-f0bb98e2-04ec-4582-ad3a-b5204e41c52a.png)
+
+
+
+
+
+
+
 Components:
 - Cognito handles user sign-up, sign-in, & access control.
 
