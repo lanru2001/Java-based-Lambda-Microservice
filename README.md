@@ -77,4 +77,6 @@ Add shade plugin
 </build>
 
 Build project in Container
+```bash
 docker run --rm -v $PWD:/usr/src/app -v maven-repository:/root/.m2/repository -w /usr/src/app maven:3.6-jdk-8 mvn clean package -DskipTests
+```
